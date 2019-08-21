@@ -1,0 +1,64 @@
+{
+  "_meta": {
+    "sources": [
+      "loopback/common/models",
+      "loopback/server/models",
+      "../common/models",
+      "./models",
+      "./node_modules/loopback-component-passport/lib/models"
+    ],
+    "mixins": [
+      "loopback/common/mixins",
+      "loopback/server/mixins",
+      "../common/mixins",
+      "./mixins"
+    ]
+  },
+  "ACL": {
+    "dataSource": "mongod",
+    "public": false
+  },
+  "RoleMapping": {
+    "dataSource": "mongod",
+    "public": false,
+    "options": {
+      "strictObjectIDCoercion": true
+    }
+  },
+  "Role": {
+    "dataSource": "mongod",
+    "public": false
+  },
+  "log": {
+    "dataSource": "db",
+    "public": true
+  },
+  "student": {
+    "dataSource": "mongod",
+    "public": true
+  },
+  "standup": {
+    "dataSource": "mongod",
+    "public": true
+  },
+  "user": {
+    "dataSource": "db",
+    "public": true
+  },
+  "accessToken": {
+    "dataSource": "db",
+    "public": false
+  },
+  "userCredential": {
+    "dataSource": "db",
+    "public": false
+  },
+  "userIdentity": {
+    "dataSource": "db",
+    "public": false
+  },
+  "checkin": {
+    "dataSource": "mongod",
+    "public": true
+  }
+}

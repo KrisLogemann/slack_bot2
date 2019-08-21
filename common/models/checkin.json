@@ -1,0 +1,29 @@
+{
+  "name": "checkin",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "slack_id": {
+      "type": "string",
+      "required": true
+    },
+    "checkin_time": {
+      "type": "date",
+      "required": true
+    },
+    "checkout_time": {
+      "type": "date"
+    },
+    "hours": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "validations": [],
+  "relations": {},
+  "acls": [],
+  "methods": {}
+}

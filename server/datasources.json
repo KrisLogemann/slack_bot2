@@ -1,0 +1,13 @@
+{
+  "mongod": {
+    "host": "localhost",
+    "port": 27017,
+    "url": "mongodb://localhost:27017/student-standups",
+    "database": "student-standups",
+    "password": "",
+    "name": "mongod",
+    "user": "",
+    "useNewUrlParser": true,
+    "connector": "mongodb"
+  }
+}
