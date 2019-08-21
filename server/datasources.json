@@ -1,13 +1,6 @@
 {
   "mongod": {
-    "host": "localhost",
-    "port": 27017,
-    "url": "mongodb://localhost:27017/student-standups",
-    "database": "student-standups",
-    "password": "",
-    "name": "mongod",
-    "user": "",
-    "useNewUrlParser": true,
-    "connector": "mongodb"
+    "connector": "mongodb",
+    "url": "mongodb://heroku_2dwhssnj:o7nqmrq84ntpvacbg0cgkbl3vv@ds211708.mlab.com:11708/heroku_2dwhssnj"
   }
 }
