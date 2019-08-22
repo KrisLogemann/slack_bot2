@@ -13,10 +13,6 @@
     "name": {
       "type": "string",
       "required": true
-    },
-    "date-of-last-standup": {
-      "type": "date",
-      "required": true
     }
   },
   "validations": [],
