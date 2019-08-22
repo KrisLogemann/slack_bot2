@@ -7,7 +7,8 @@ class DashboardContainer extends Component {
     super(props);
     this.state = {
       students: [],
-      allStandups: []
+      allStandups: [],
+      activeCheckins: []
     }
   }
 
@@ -25,6 +26,13 @@ class DashboardContainer extends Component {
         this.setState({ allStandups: data });
       })
       .catch(err => console.log(err));
+
+    fetch('/api/checkins/active')
+      .then(response => response.json())
+      .then(data => {
+        this.setState({ activeCheckins: data });
+      })
+      .catch(err => console.log(err));
   }
 
   render() {
@@ -39,31 +47,14 @@ class DashboardContainer extends Component {
     const dayOfMonth = today.getDate();
     const midnight = new Date(`${today.getFullYear()}-${month}-${today.getDate()}`);
 
-    let standupsData
-        timeInClassData;
+    let standupsData;
+    let checkinData;
     if(this.state.allStandups.length > 0 && this.state.students.length > 0) {
       standupsData = calculateStandupsData(this.state.allStandups, this.state.students, midnight);
     }
-
-    // mock data
-    const timeInClassData = {
-      summary: [
-        { featured: '50%', fraction: '10 / 20', footer: 'checked in'}
-      ],
-      delinquents: [
-        { name: 'Student 1', slack_id: '123' },
-        { name: 'Student 2', slack_id: '234' },
-        { name: 'Student 3', slack_id: '345' },
-        { name: 'Student 4', slack_id: '456' },
-        { name: 'Student 5', slack_id: '567' },
-        { name: 'Student 6', slack_id: '678' },
-        { name: 'Student 7', slack_id: '789' },
-        { name: 'Student 8', slack_id: '890' },
-        { name: 'Student 9', slack_id: '901' },
-        { name: 'Student 10', slack_id: '012' }
-      ]
+    if(this.state.activeCheckins.length > 0 && this.state.students.length > 0) {
+      checkinData = calculateCheckinData(this.state.activeCheckins, this.state.students);
     }
-    // end mock data
 
     return (
       <React.Fragment>
@@ -77,8 +68,8 @@ class DashboardContainer extends Component {
           <div className='data-section-container-flex'>
             <DataSection
               title='time in class'
-              data={ timeInClassData ? timeInClassData.summary : undefined }
-              delinquents={ timeInClassData ? timeInClassData.delinquents : undefined }
+              data={ checkinData ? checkinData.summary : undefined }
+              delinquents={ checkinData ? checkinData.delinquents : undefined }
               delinquentTitle = 'absentees'
             />
             <DataSection
@@ -118,6 +109,29 @@ function calculateStandupsData(standups, students, today) {
       }
     ],
     delinquents
+  }
+}
+
+function calculateCheckinData(activeCheckins, students) {
+  // assumes a student cannot have more than one active checkin
+  const checkinPercent = 
+    Math.round((activeCheckins.length / students.length) * 100);
+
+  const absentees = students.filter(student => {
+    return !activeCheckins.some(checkin => {
+        return student.slack_id === checkin.slack_id;
+      });
+  });
+
+  return {
+    summary: [
+      { 
+        featured: `${ checkinPercent }%`,
+        fraction: `${ activeCheckins.length } / ${ students.length }`,
+        footer: 'checked in'
+      }
+    ],
+    delinquents: absentees
   }
 }
 

@@ -2,14 +2,7 @@ import React, { Component } from 'react';
 import Standup from './Standup';
 import HamburgerNavigation from '../general_components/HamburgerNavigation';
 import DataSection from './DataSection';
-
-// mock data
-const timeInClassData = [
-  { featured: '30', measurement: 'hrs', footer: '7 days'},
-  { featured: '22', measurement: 'hrs', footer: 'weekly average'},
-  { featured: '130', measurement: 'hrs', footer: 'total'}
-];
-// end mock data
+import { calculateCheckinData, calculateStandupsData } from '../utilities';
 
 class Standups extends Component {
   constructor(props) {
@@ -17,32 +10,45 @@ class Standups extends Component {
 
     this.state = {
       name: '',
-      standups: []
+      standups: [],
+      checkinHistory: []
     }
   }
 
   componentDidMount() {
     const id = this.props.location.pathname.replace('/student-summary/', '');
     fetch(`/api/students/${id}`)
-      .then(response => response.json()
+      .then(response => response.json())
       .then(data => {
         this.setState({ name: data.name });
         fetch(`/api/students/${data.id}/standups`)
           .then(response => response.json())
           .then(standups => {
-            this.setState({ standups });
+            this.setState({ standups: standups.reverse() });
           })
           .catch(err => console.log(err));
       })
-      .catch(err => console.log(err)));
+      .catch(err => console.log(err));
+      
+    fetch(`/api/students/${id}`)
+      .then(response => response.json())
+      .then(student => {
+        fetch(`/api/checkins/slackId/${student.slack_id}`)
+          .then(response => response.json())
+          .then(checkins => {
+            this.setState({ checkinHistory: checkins });
+          })
+          .catch(err => console.log(err));
+      })
+      .catch(err => console.log(err));
   }
 
   render() {
-    let standupsData;
     let standupsComponent;
+    let standupsData = calculateStandupsData(this.state.standups);
+    let checkinData = calculateCheckinData(this.state.checkinHistory);
     if(this.state.standups.length > 0) {
-      standupsData = calculateStandupsData(this.state.standups);
-      standupsComponent = this.state.standups.reverse().map(standup => (
+      standupsComponent = this.state.standups.map(standup => (
         <Standup key={standup.id} standup={standup}/>
       ));
     } else {
@@ -57,7 +63,7 @@ class Standups extends Component {
         </header>
         <main className='wrapper'>
           <div className='data-section-container-grid'>
-            <DataSection title='time in class' data={ timeInClassData }/>
+            <DataSection title='time in class' data={ checkinData }/>
             <DataSection title='standups completed' data={ standupsData }/>
           </div>
           <section className='standups'>
@@ -70,40 +76,6 @@ class Standups extends Component {
       </React.Fragment>
     );
   }
-}
-
-function calculateStandupsData(standups) {
-  // Summary of standups completed in the last seven days
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
-  const midnightSevenDaysAgo = new Date(`${year}-${month}-${day - 7}`);
-
-  const weekOfStandups = standups.filter(standup => {
-    return new Date(standup.date) > midnightSevenDaysAgo;
-  });
-
-  const weekOfStandupsPercent = Math.round((weekOfStandups.length / 7) * 100);
-
-  // Summary of standups completed during entire enrollment (assuming standup submitted on day 1)
-  const firstStandup = standups[0];
-  const dayOne = new Date(firstStandup.date);
-  const totalDaysEnrolled = (Math.round((today - dayOne) / (1000*60*60*24))) + 1; // math is done in milliseconds
-  const averageStandupPercent = 
-    Math.round((standups.length / totalDaysEnrolled) * 100);
-
-  return ([
-    { 
-      featured: `${ weekOfStandupsPercent }%`,
-      fraction: `${ weekOfStandups.length } / 7`,
-      footer: '7 days' 
-    },{ 
-      featured: `${ averageStandupPercent }%`,
-      fraction: `${ standups.length } / ${ totalDaysEnrolled }`,
-      footer: 'average'
-    }
-  ]);
 }
 
 export default Standups;
