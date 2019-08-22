@@ -5,10 +5,10 @@ var boot = require('loopback-boot');
 const path = require('path');
 var session = require('express-session');
 
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
 
-mongoose.connect('mongodb://fakeuser:fakepass1@ds211708.mlab.com:11708/heroku_2dwhssnj', {useNewUrlParser: true});
-mongoose.Promise = Promise;
+// mongoose.connect('mongodb://fakeuser:fakepass1@ds211708.mlab.com:11708/heroku_2dwhssnj', {useNewUrlParser: true});
+// mongoose.Promise = Promise;
 
 require('dotenv').config();
 
