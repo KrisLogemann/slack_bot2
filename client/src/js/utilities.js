@@ -18,7 +18,6 @@ const sevenDaysAgoMidnight = new Date(
 const millisecondsToHours = 1000*60*60;
 const millisecondsToDays = 1000*60*60*24;
 
-
 function calculateDashboardStandupsData(standups, students) {
   const todaysStandups = standups.filter(standup => {
     return new Date(standup.date) > todayMidnight;
