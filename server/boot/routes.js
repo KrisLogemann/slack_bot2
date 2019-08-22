@@ -1,5 +1,5 @@
 'use strict';
-require('dotenv').config();
+//require('dotenv').config();
 
 const axios = require('axios');
 const bot = require('../bot');
@@ -200,30 +200,21 @@ module.exports = (app) => {
 
   // 6:20pm
   const checkOutCache = schedule.scheduleJob({hour: 18, minute: 20}, () => {
-    let promisesToKeep =[];
-    while( checkedIn.length ){
-      let userCheckInData = checkedIn.pop();
-      bot.postEphemeral(
-        process.env.STUDENTS_CHANNEL,
-        userCheckInData.slack_id,
-        ":alarm_clock: Auto-checkout test!"
-      );
-      userCheckInData.checkout_time = new Date();
-      userCheckInData.hours = (
-        (userCheckInData.checkout_time - userCheckInData.checkin_time) /
-        (1000 * 60 * 60) ); // milliseconds in a sec, seconds in a min, minutes in an hour
-      let addCheckin = 
-        app.models.checkin
-        .create(userCheckInData)
-        .catch(err => console.log(err));
-      promisesToKeep.push(addCheckin);
-    }
-    if( promisesToKeep.length > 0 ) {
-      Promise.all(promisesToKeep.map(p => p.catch(error => console.log(err))))
-        .then()
-        .catch(err => console.log(err));
-    }
-    checkedIn = [];
+    app.models.checkin.active((err, response) => {
+      if(err) { console.log(new Error().lineNumber, err) }
+      const checkouts = response.map(checkin => {
+        return app.models.checkin.updateAll(
+          { id: checkin.id },
+          { checkout_time: new Date(),
+            hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
+            // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
+          }
+        )
+        .then(response => response)
+      });
+    });
+    Promise.all(checkouts)
+      .catch(new Error().lineNumber, err);
   });
 
   function doorbell(user, channel) {
@@ -354,149 +345,143 @@ module.exports = (app) => {
   };
 
   function checkIn(user, loc, channel) {
-    let checkInData = checkedIn.filter(e => e.slack_id === user); 
-
-    if (checkedIn.filter(e => e.slack_id === user).length>0){
-      var params = {
-        icon_emoji: ':x:',
-      };
-      bot.postEphemeral(channel, user, 'You have already checked in!', params);
-    } else {
-      // post message "you have checked in"
-      const isNearby = (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
-
-      let userCheckInData={
-        slack_id: user,
-        checkin_time: new Date(),
-        checkout_time: undefined,
-        hours: 0
+    // check the active checkins to see if the current user is already checked in
+    app.models.checkin.active((err, response) => {
+      if(err) { console.log(err) }
+      if (response.filter(e => e.slack_id === user).length>0){
+        var params = {
+          icon_emoji: ':x:',
+        };
+        bot.postEphemeral(channel, user, 'You have already checked in!', params);
       }
-      axios.post('/api/logs/checkIn', `user=${user}&lat=${loc.lat}&long=${loc.long}`,
-        {
-          headers: {'content-type': 'application/x-www-form-urlencoded'},
-          baseURL: process.env.BASE_URL,
-        })
-        .then((response) => {
-          if (response.status === 200) {
-            var params = {
-              icon_emoji: ':heavy_check_mark:',
-            };
-            bot.postEphemeral(channel, user, 'You have checked in!', params);
-            checkedIn.push(userCheckInData);
-            if (process.env.EXTERNAL_LOGGING) {
-              axios.post(process.env.EXTERNAL_LOGGING_URL,
-                {
-                  user,
-                  method: 'checkin',
-                  loc,
-                  isNearby,
-                  token: process.env.EXTERNAL_LOGGING_TOKEN,
-                }
-              );
-            };
-          } else {
-            var params = {
-              icon_emoji: ':x:',
-            };
-            bot.postEphemeral(channel, user, 'Error', params);
-          }
-        })
-        .catch(err => {
-          let thisline = new Error().lineNumber;
-          console.log(thisline,err);
-
-          checkedIn.push(userCheckInData);
-          if(process.env.EXTERNAL_LOGGING_URL) {
-            var params = {
-              icon_emoji: ':x:',
-            };
-            bot.postEphemeral(channel, user, 'You have already checked in!', params);
-          }
-        }); // end of axios call
-    }
+      else {
+        // post message "you have checked in"
+        const isNearby = 
+          (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 
+          0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
+        
+        app.models.checkin
+          .create({
+            slack_id: user,
+            checkin_time: new Date(),
+            checkout_time: null,
+            hours: 0
+          })
+          .then(response => {
+            axios.post('/api/logs/checkIn', `user=${user}&lat=${loc.lat}&long=${loc.long}`,
+            {
+              headers: {'content-type': 'application/x-www-form-urlencoded'},
+              baseURL: process.env.BASE_URL,
+            })
+            .then((response) => {
+              if (response.status === 200) {
+                var params = {
+                  icon_emoji: ':heavy_check_mark:',
+                };
+                bot.postEphemeral(channel, user, 'You have checked in!', params);
+                if (process.env.EXTERNAL_LOGGING) {
+                  axios.post(process.env.EXTERNAL_LOGGING_URL,
+                    {
+                      user,
+                      method: 'checkin',
+                      loc,
+                      isNearby,
+                      token: process.env.EXTERNAL_LOGGING_TOKEN,
+                    }
+                  );
+                };
+              } else {
+                var params = {
+                  icon_emoji: ':x:',
+                };
+                bot.postEphemeral(channel, user, 'Error', params);
+              }
+            })
+            .catch(err => {
+              let thisline = new Error().lineNumber;
+              console.log(thisline,err);
+  
+              if(process.env.EXTERNAL_LOGGING_URL) {
+                var params = {
+                  icon_emoji: ':x:',
+                };
+                bot.postEphemeral(channel, user, 'You have already checked in!', params);
+              }
+            }); // end of axios call
+          })
+          .catch(err => console.log(err));
+      }
+    });
   };
 
   function checkOut(user, loc, channel, penalty = 'none') {
-    let checkInData = checkedIn.filter(e => e.slack_id === user);
-    if ( ! checkedIn.filter(e => e.slack_id === user).length ){
-      // can't check out if not checked in
-      // post message "you have not checked in"
-
-      var params = {
-        icon_emoji: ':x:',
-      };
-      bot.postEphemeral(channel, user, 'You have not checked in!', params);
-    } else {
-      // remove from checkedIn array -> for loop, if user, remove
-      // post message "you have checked out"
-      const isNearby = (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
-      if (penalty === 'none' && !isNearby) {
-        penalty = 'notAtSchool';
+    app.models.checkin.active((err, response) => {
+      if(err) { console.log(new Error().lineNumber, err) }
+      const usersCheckins = response.filter(checkin => checkin.slack_id == user);
+      
+      // can't checkout if not checked in
+      if(usersCheckins.length === 0) {
+        var params = {
+          icon_emoji: ':x:',
+        };
+        bot.postEphemeral(channel, user, 'You have not checked in!', params);
       }
-      axios.post('/api/logs/checkOut', `user=${user}&lat=${loc.lat || 0}&long=${loc.long || 0}&penalty=${penalty}`,
-        {
-          headers: {'content-type': 'application/x-www-form-urlencoded'},
-          baseURL: process.env.BASE_URL,
-        })
-        .then((response) => {
-          if (response.status === 200) {
-            var params = {
-              icon_emoji: ':heavy_check_mark:',
-            };
-            bot.postEphemeral(channel, user, penalty === 'timeout' ? ':warning: You have been automatically checked out.' : 'You have checked out!', params);
-            let ArrUserCheckInData = checkedIn.filter(e => e.slack_id === user);
-            let promisesToKeep =[]; // grab any and all open checkins for this user
-            while( ArrUserCheckInData.length ){
-              let userCheckInData = ArrUserCheckInData.pop();
-              userCheckInData.checkout_time = new Date();
-              userCheckInData.hours = (
-                (userCheckInData.checkout_time - userCheckInData.checkin_time) /
-                (1000 * 60 * 60) ); 
-                // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
-              let addCheckin = 
-                app.models.checkin
-                .create(userCheckInData)
-                .catch(err => {
-                  let thisline = new Error().lineNumber;
-                  console.log(thisline,err);
-                });
-              promisesToKeep.push(addCheckin);
+      else {
+        const isNearby = (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
+        if (penalty === 'none' && !isNearby) {
+          penalty = 'notAtSchool';
+        }
+  
+        const userCheckouts = usersCheckins.map(checkin => {
+          return app.models.checkin.updateAll(
+            { id: checkin.id },
+            { checkout_time: new Date(),
+              hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
+              // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
+  
             }
-            if( promisesToKeep.length > 0 ) {
-              Promise.all(promisesToKeep)
-                .then()
-                .catch(err => {
-                  let thisline = new Error().lineNumber;
-                  console.log(thisline,err);
-                });
-            }       
-            checkedIn = checkedIn.filter(e => e.slack_id !== user);
-
-            if (process.env.EXTERNAL_LOGGING) {
-              axios.post(process.env.EXTERNAL_LOGGING_URL,
-                {
-                  user,
-                  method: 'checkout',
-                  loc,
-                  isNearby,
-                  token: process.env.EXTERNAL_LOGGING_TOKEN,
-                }
-              );
-            };
-          } else {
-            var params = {
-              icon_emoji: ':x:',
-            };
-            bot.postEphemeral(channel, user, 'Error', params);
-          }
-        })
-        .catch(err => {
-          let thisline = new Error().lineNumber;
-          console.log(thisline,err);
-
-          checkedIn = checkedIn.filter(e => e.slack_id !== user);
+          )
+          .then(response => response)
         });
-    }
+        Promise.all(userCheckouts)
+          .then(result => {
+            axios.post('/api/logs/checkOut', `user=${user}&lat=${loc.lat || 0}&long=${loc.long || 0}&penalty=${penalty}`,
+              {
+                headers: {'content-type': 'application/x-www-form-urlencoded'},
+                baseURL: process.env.BASE_URL,
+              })
+              .then(response => {
+                if (response.status === 200) {
+                  var params = {
+                    icon_emoji: ':heavy_check_mark:',
+                  };
+                  bot.postEphemeral(channel, user, penalty === 'timeout' ? ':warning: You have been automatically checked out.' : 'You have checked out!', params);
+                  if (process.env.EXTERNAL_LOGGING) {
+                    axios.post(process.env.EXTERNAL_LOGGING_URL,
+                      {
+                        user,
+                        method: 'checkout',
+                        loc,
+                        isNearby,
+                        token: process.env.EXTERNAL_LOGGING_TOKEN,
+                      }
+                    );
+                  };
+                } else {
+                  var params = {
+                    icon_emoji: ':x:',
+                  };
+                  bot.postEphemeral(channel, user, 'Error', params);
+                }
+              })
+              .catch(err => {
+                let thisline = new Error().lineNumber;
+                console.log(thisline,err);
+              });
+          })
+          .catch(err => console.log(new Error().lineNumber, err));
+      }
+    });
   };
 
   function adminReport() {
