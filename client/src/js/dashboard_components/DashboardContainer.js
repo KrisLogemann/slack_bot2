@@ -1,6 +1,9 @@
 import React, { Component } from 'react';
 import DataSection from './DataSection';
 import Roster from './Roster';
+import {
+  calculateDashboardCheckinData,
+  calculateDashboardStandupsData } from '../utilities'; 
 
 class DashboardContainer extends Component {
   constructor(props) {
@@ -45,15 +48,12 @@ class DashboardContainer extends Component {
     const dayOfWeek = days[today.getDay()];
     const month = months[today.getMonth()];
     const dayOfMonth = today.getDate();
-    const midnight = new Date(`${today.getFullYear()}-${month}-${today.getDate()}`);
 
     let standupsData;
     let checkinData;
-    if(this.state.allStandups.length > 0 && this.state.students.length > 0) {
-      standupsData = calculateStandupsData(this.state.allStandups, this.state.students, midnight);
-    }
-    if(this.state.activeCheckins.length > 0 && this.state.students.length > 0) {
-      checkinData = calculateCheckinData(this.state.activeCheckins, this.state.students);
+    if(this.state.students.length > 0) {
+      standupsData = calculateDashboardStandupsData(this.state.allStandups, this.state.students);
+      checkinData = calculateDashboardCheckinData(this.state.activeCheckins, this.state.students);
     }
 
     return (
@@ -84,54 +84,6 @@ class DashboardContainer extends Component {
         </main>
       </React.Fragment>
     );
-  }
-}
-
-function calculateStandupsData(standups, students, today) {
-  const todaysStandups = standups.filter(standup => {
-    return new Date(standup.date) > today
-  });
-
-  const delinquents = students.filter(student => {
-    return !todaysStandups.some(standup => {
-        return student.id === standup.studentId;
-      });
-  });
-
-  const todaysStandupPercent = Math.round((todaysStandups.length / students.length) * 100);
-
-  return {
-    summary: [
-      { 
-        featured: `${todaysStandupPercent}%`,
-        fraction: `${todaysStandups.length} / ${students.length}`,
-        footer: 'today'
-      }
-    ],
-    delinquents
-  }
-}
-
-function calculateCheckinData(activeCheckins, students) {
-  // assumes a student cannot have more than one active checkin
-  const checkinPercent = 
-    Math.round((activeCheckins.length / students.length) * 100);
-
-  const absentees = students.filter(student => {
-    return !activeCheckins.some(checkin => {
-        return student.slack_id === checkin.slack_id;
-      });
-  });
-
-  return {
-    summary: [
-      { 
-        featured: `${ checkinPercent }%`,
-        fraction: `${ activeCheckins.length } / ${ students.length }`,
-        footer: 'checked in'
-      }
-    ],
-    delinquents: absentees
   }
 }
 

@@ -1,4 +1,9 @@
 const today = new Date();
+const todayMidnight = new Date(
+  `${today.getFullYear()}-
+  ${today.getMonth() + 1}-
+  ${today.getDate()}`
+); 
 const tomorrowMidnight = new Date(
   `${today.getFullYear()}-
   ${today.getMonth() + 1}-
@@ -13,18 +18,75 @@ const sevenDaysAgoMidnight = new Date(
 const millisecondsToHours = 1000*60*60;
 const millisecondsToDays = 1000*60*60*24;
 
-function calculateStandupsData(standups) {
+function calculateDashboardStandupsData(standups, students) {
+  const todaysStandups = standups.filter(standup => {
+    return new Date(standup.date) > todayMidnight;
+  });
+  const uniqueStandupsToday = [...new Set(todaysStandups.map(standup => {
+    return standup.slack_id
+  }))];
+  const delinquents = students.filter(student => {
+    return !uniqueStandupsToday.some(slack_id => {
+        return student.slack_id === slack_id;
+      });
+  });
+  const todaysStandupPercent = Math.round((uniqueStandupsToday.length / students.length) * 100);
+
+  return {
+    summary: [
+      { 
+        featured: `${todaysStandupPercent}%`,
+        fraction: `${uniqueStandupsToday.length} / ${students.length}`,
+        footer: 'today'
+      }
+    ],
+    delinquents
+  }
+}
+
+function calculateDashboardCheckinData(activeCheckins, students) {
+  // assumes a student cannot have more than one active checkin
+  const checkinPercent = 
+    Math.round((activeCheckins.length / students.length) * 100);
+
+  const absentees = students.filter(student => {
+    return !activeCheckins.some(checkin => {
+        return student.slack_id === checkin.slack_id;
+      });
+  });
+
+  return {
+    summary: [
+      { 
+        featured: `${ checkinPercent }%`,
+        fraction: `${ activeCheckins.length } / ${ students.length }`,
+        footer: 'checked in'
+      }
+    ],
+    delinquents: absentees
+  }
+}
+
+function calculateIndividualStandupsData(standups) {
   if(standups.length == 0) { return undefined }
 
   // standups completed in the last seven days
   const standupsLastSevenDays = standups.filter(standup => {
     return new Date(standup.date) > sevenDaysAgoMidnight;
   });
+  const standupsLastSevenDaysDates = standupsLastSevenDays.map(standup => {
+    const standupDate = new Date(standup.date);
+    return (
+      `${standupDate.getFullYear()}-
+      ${standupDate.getMonth() + 1}-
+      ${standupDate.getDate()}`
+    )
+  })
   const uniqueStandupsLastSevenDays = 
-    [...new Set(standupsLastSevenDays.map(standup => standup.date))];
+    [...new Set(standupsLastSevenDaysDates)];
 
   const weekOfStandupsPercent = 
-    Math.round((standupsLastSevenDays.length / 7) * 100);
+    Math.round((uniqueStandupsLastSevenDays.length / 7) * 100);
 
   // standups completed during entire enrollment (assuming standup submitted on day 1)
   const dayOne = new Date(standups[standups.length - 1].date);
@@ -34,10 +96,18 @@ function calculateStandupsData(standups) {
     ${dayOne.getDate()}`
   );
   const totalDaysEnrolled = 
-    Math.round((today - dayOneMidnight) / millisecondsToDays);
-  const daysWithStandups = [...new Set(standups.map(standup => standup.date))];
+    Math.round((tomorrowMidnight - dayOneMidnight) / millisecondsToDays);
+  const standupsDates = standups.map(standup => {
+    const standupDate = new Date(standup.date);
+    return (
+      `${standupDate.getFullYear()}-
+      ${standupDate.getMonth() + 1}-
+      ${standupDate.getDate()}`
+    )
+  })
+  const uniqueDaysWithStandups = [...new Set(standupsDates)]
   const averageStandupPercent = 
-    Math.round((daysWithStandups.length / totalDaysEnrolled) * 100);
+    Math.round((uniqueDaysWithStandups.length / totalDaysEnrolled) * 100);
 
   return ([
     { 
@@ -46,13 +116,13 @@ function calculateStandupsData(standups) {
       footer: '7 days' 
     },{ 
       featured: `${ averageStandupPercent }%`,
-      fraction: `${ daysWithStandups.length } / ${ totalDaysEnrolled }`,
+      fraction: `${ uniqueDaysWithStandups.length } / ${ totalDaysEnrolled }`,
       footer: 'average'
     }
   ]);
 }
 
-function calculateCheckinData(checkins) {
+function calculateIndividualCheckinData(checkins) {
   if(checkins.length == 0) { return undefined }
   
   // total time spent in classroom
@@ -67,7 +137,8 @@ function calculateCheckinData(checkins) {
   }, 0);
   totalHours = Math.round(totalHours);
   
-  // weekly average = daily average * 7
+  // weekly average = daily average * 7, but only if student has already been
+  // enrolled for at least one week
   const dayOne = new Date(checkins[0].checkin_time);
   const dayOneMidnight = new Date(
     `${dayOne.getFullYear()}-
@@ -76,7 +147,12 @@ function calculateCheckinData(checkins) {
   );
   const totalDaysEnrolled = 
     Math.round((tomorrowMidnight - dayOneMidnight) / millisecondsToDays);
-  const weeklyAverageHours = Math.round(totalHours / totalDaysEnrolled * 7);
+  let weeklyAverageHours;
+  if(totalDaysEnrolled <= 7) {
+    weeklyAverageHours = totalHours;
+  } else {
+    weeklyAverageHours = Math.round(totalHours / totalDaysEnrolled * 7);
+  }
 
   // time spent in classroom in the last seven days
   const checkinsLastSevenDays = checkins.filter(checkin => {
@@ -105,4 +181,9 @@ function calculateCheckinData(checkins) {
   ]);
 }
 
-module.exports = { calculateStandupsData, calculateCheckinData };
+module.exports = {
+  calculateDashboardCheckinData,
+  calculateDashboardStandupsData,
+  calculateIndividualStandupsData,
+  calculateIndividualCheckinData
+};

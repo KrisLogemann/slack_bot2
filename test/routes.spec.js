@@ -1,7 +1,5 @@
 'use strict';
 
-//require('dotenv').config();
-
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const expect = require('chai').expect;

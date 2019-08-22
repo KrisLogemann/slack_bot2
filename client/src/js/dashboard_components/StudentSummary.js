@@ -2,7 +2,9 @@ import React, { Component } from 'react';
 import Standup from './Standup';
 import HamburgerNavigation from '../general_components/HamburgerNavigation';
 import DataSection from './DataSection';
-import { calculateCheckinData, calculateStandupsData } from '../utilities';
+import {
+  calculateIndividualCheckinData,
+  calculateIndividualStandupsData } from '../utilities';
 
 class Standups extends Component {
   constructor(props) {
@@ -45,8 +47,8 @@ class Standups extends Component {
 
   render() {
     let standupsComponent;
-    let standupsData = calculateStandupsData(this.state.standups);
-    let checkinData = calculateCheckinData(this.state.checkinHistory);
+    let standupsData = calculateIndividualStandupsData(this.state.standups);
+    let checkinData = calculateIndividualCheckinData(this.state.checkinHistory);
     if(this.state.standups.length > 0) {
       standupsComponent = this.state.standups.map(standup => (
         <Standup key={standup.id} standup={standup}/>

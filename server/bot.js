@@ -1,6 +1,5 @@
 'use strict';
 
-//require('dotenv').config();
 const SlackBot = require('slackbots');
 
 var bot = new SlackBot({
