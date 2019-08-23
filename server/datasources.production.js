@@ -1,9 +1,8 @@
 'use strict';
 
 module.exports = {
-  'MongoDB': {
-    'name': 'MongoDB',
+  'mongod': {
     'connector': 'mongodb',
-    'url': process.env.MONGODB_URI,
+    'url': 'mongodb://heroku_hrfg20r0:uoiveldi2otfpt3rmscvkugqml@ds211718.mlab.com:11718/heroku_hrfg20r0',
   },
 };

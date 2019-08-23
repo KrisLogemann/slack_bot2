@@ -5,9 +5,10 @@ module.exports = {
     'name': 'db',
     'connector': 'memory',
   },
-  'MongoDB': {
-    'url': 'mongodb://localhost:27017',
-    'name': 'MongoDB',
+  'mongod': {
+    'database': 'student-standups',
+    'name': 'mongod',
     'connector': 'mongodb',
   },
 };
+

@@ -19,22 +19,19 @@ class Standups extends Component {
 
   componentDidMount() {
     const id = this.props.location.pathname.replace('/student-summary/', '');
+      
     fetch(`/api/students/${id}`)
       .then(response => response.json())
-      .then(data => {
-        this.setState({ name: data.name });
-        fetch(`/api/students/${data.id}/standups`)
+      .then(student => {
+        this.setState({ name: student.name });
+
+        fetch(`/api/students/${student.id}/standups`)
           .then(response => response.json())
           .then(standups => {
             this.setState({ standups: standups.reverse() });
           })
           .catch(err => console.log(err));
-      })
-      .catch(err => console.log(err));
-      
-    fetch(`/api/students/${id}`)
-      .then(response => response.json())
-      .then(student => {
+
         fetch(`/api/checkins/slackId/${student.slack_id}`)
           .then(response => response.json())
           .then(checkins => {
