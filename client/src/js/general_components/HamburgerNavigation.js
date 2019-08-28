@@ -5,8 +5,20 @@ function HamburgerNavigation(props) {
     <React.Fragment>
       <div className='hamburger' onClick={ toggleMenu }><div></div></div>
       <ul className='navigation hamburger-navigation'>
-        <li><a className='link-btn' href='/logout'>Logout</a></li>
-        <li><a className='link-btn' href='/dashboard'>Dashboard</a></li>
+        <li>
+          <a
+            className='link-btn'
+            href={`${ process.env.BASE_URL }logout?auth_token=${ props.auth_token }`}
+          >Logout
+          </a>
+        </li>
+        <li>
+          <a
+            className='link-btn'
+            href={`${ process.env.BASE_URL }dashboard?auth_token=${ props.auth_token }`}
+          >Dashboard
+          </a>
+        </li>
       </ul>
     </React.Fragment>
   );
