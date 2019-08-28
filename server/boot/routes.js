@@ -352,7 +352,6 @@ module.exports = (app) => {
     currentStudent.blockers = submission.blockers;
     currentStudent.submitted = true;
     currentStudent.date = new Date(Date.now());
-    let newDate = new Date();
     var params = {
       icon_emoji: ':pepedance:',
     };
@@ -435,21 +434,8 @@ module.exports = (app) => {
                     }
                   );
                 };
-              } else {
-                var params = {
-                  icon_emoji: ':x:',
-                };
-                bot.postEphemeral(channel, user, 'Error', params);
               }
             });
-
-              if (process.env.EXTERNAL_LOGGING_URL) {
-                var params = {
-                  icon_emoji: ':x:',
-                };
-                bot.postEphemeral(channel, user, 'You have already checked in!', params);
-              }
-            }); // end of axios call
           })
           .catch(err => { let thisline = new Error().lineNumber; console.log(thisline,err); });
       }
@@ -500,55 +486,6 @@ module.exports = (app) => {
             });
           }
         }
-
-        const userCheckouts = usersCheckins.map(checkin => {
-          return app.models.checkin.updateAll(
-            {id: checkin.id},
-            {checkout_time: new Date(),
-              hours: (new Date() - new Date(checkin.checkin_time)) / (1000 * 60 * 60),
-              // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
-
-            }
-          )
-          .then(response => response);
-        });
-        Promise.all(userCheckouts)
-          .then(result => {
-            axios.post('/api/logs/checkOut', `user=${user}&lat=${loc.lat || 0}&long=${loc.long || 0}&penalty=${penalty}`,
-              {
-                headers: {'content-type': 'application/x-www-form-urlencoded'},
-                baseURL: process.env.BASE_URL,
-              })
-              .then(response => {
-                if (response.status === 200) {
-                  var params = {
-                    icon_emoji: ':heavy_check_mark:',
-                  };
-                  bot.postEphemeral(channel, user, penalty === 'timeout' ? ':warning: You have been automatically checked out.' : 'You have checked out!', params);
-                  if (process.env.EXTERNAL_LOGGING) {
-                    axios.post(process.env.EXTERNAL_LOGGING_URL,
-                      {
-                        user,
-                        method: 'checkout',
-                        loc,
-                        isNearby,
-                        token: process.env.EXTERNAL_LOGGING_TOKEN,
-                      }
-                    );
-                  };
-                } else {
-                  var params = {
-                    icon_emoji: ':x:',
-                  };
-                  bot.postEphemeral(channel, user, 'Error', params);
-                }
-              })
-              .catch(err => {
-                let thisline = new Error().lineNumber;
-                console.log(thisline, err);
-              });
-          })
-          .catch(err => console.log(new Error().lineNumber, err));
       }
     });
     Promise.all(checkouts).then().catch(err => console.log(err));
