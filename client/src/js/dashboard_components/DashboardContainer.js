@@ -13,24 +13,32 @@ class DashboardContainer extends Component {
       allStandups: [],
       activeCheckins: []
     }
+    this.getAuthToken = this.getAuthToken.bind(this);
   }
 
+  getAuthToken() {
+    return this.props
+    .location
+    .search
+    .replace(/^(.*?)\auth_token=/, '');
+  }
+  
   componentDidMount(){
-    fetch('/api/students')
+    fetch(`/api/students?access_token=${ this.getAuthToken() }`)
       .then(response => response.json())
       .then(data => {
         this.setState({ students: data });
       })
       .catch(err => console.log(err));
     
-    fetch('/api/standups')
+    fetch(`/api/standups?access_token=${ this.getAuthToken() }`)
       .then(response => response.json())
       .then(data => {
         this.setState({ allStandups: data });
       })
       .catch(err => console.log(err));
 
-    fetch('/api/checkins/active')
+    fetch(`/api/checkins/active?access_token=${ this.getAuthToken() }`)
       .then(response => response.json())
       .then(data => {
         this.setState({ activeCheckins: data });
@@ -52,16 +60,28 @@ class DashboardContainer extends Component {
     let standupsData;
     let checkinData;
     if(this.state.students.length > 0) {
-      standupsData = calculateDashboardStandupsData(this.state.allStandups, this.state.students);
-      checkinData = calculateDashboardCheckinData(this.state.activeCheckins, this.state.students);
+      standupsData = calculateDashboardStandupsData(
+        this.state.allStandups,
+        this.state.students
+      );
+      checkinData = calculateDashboardCheckinData(
+        this.state.activeCheckins,
+        this.state.students
+      );
     }
 
     return (
       <React.Fragment>
         <header>
-          <p className='date'>{`${dayOfWeek}, ${month} ${dayOfMonth}`}</p>
+          <p className='date'>{`${ dayOfWeek }, ${ month } ${ dayOfMonth }`}</p>
           <ul className='navigation'>
-            <li><a className='link-btn' href='login.html'>Logout</a></li>
+            <li>
+              <a 
+                className='link-btn'
+                href={`${ process.env.BASE_URL }logout?auth_token=${ this.getAuthToken() }`}
+              >Logout
+              </a>
+            </li>
           </ul>
         </header>
         <main className='wrapper dashboard-wrapper'>
@@ -79,7 +99,10 @@ class DashboardContainer extends Component {
             />
           </div>
           <div className='grid-column'>
-            <Roster students={ this.state.students } />
+            <Roster
+              students={ this.state.students }
+              auth_token={ this.getAuthToken() }
+            />
           </div>
         </main>
       </React.Fragment>

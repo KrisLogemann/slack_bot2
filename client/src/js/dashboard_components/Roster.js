@@ -7,7 +7,7 @@ function Roster(props) {
       <h2 className='section-label'>View data for</h2>
       <ul className='student-links box'>
         { props.students.map(student => {
-          const link = `/student-summary/${ student.id }`;
+          const link = `/student-summary/${ student.id }?auth_token=${ props.auth_token }`;
           return (
             <li key={ student.id }>
               <Link to={ link }>{ student.name }</Link>

@@ -20,7 +20,7 @@
   },
   "RoleMapping": {
     "dataSource": "mongod",
-    "public": false,
+    "public": true,
     "options": {
       "strictObjectIDCoercion": true
     }
@@ -42,7 +42,7 @@
     "public": true
   },
   "user": {
-    "dataSource": "db",
+    "dataSource": "mongod",
     "public": true
   },
   "accessToken": {

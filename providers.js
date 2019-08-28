@@ -10,7 +10,7 @@ module.exports = {
     'callbackURL': '/auth/google/callback',
     'authPath': '/auth/google',
     'callbackPath': '/auth/google/callback',
-    'successRedirect': '/dashboard',
+    'successRedirect': '/auth',
     'failureRedirect': '/login',
     'scope': ['email', 'profile'],
     'failureFlash': true,

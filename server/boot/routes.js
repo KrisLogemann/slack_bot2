@@ -360,12 +360,12 @@ module.exports = (app) => {
     const addStandup = app.models.student.find({'where': {'slack_id': user}})
     .then(student => {
       app.models.standup.create({
-        "slack_id": user,
-        "date": newDate,
-        "tasks_yesterday": submission.yesterday,
-        "tasks_today": submission.today,
-        "blockers": submission.blockers,
-        "studentId": student[0].id,
+        'slack_id': user,
+        'date': newDate,
+        'tasks_yesterday': submission.yesterday,
+        'tasks_today': submission.today,
+        'blockers': submission.blockers,
+        'studentId': student[0].id,
       });
     })
     .catch(err => console.log(err));
@@ -376,7 +376,6 @@ module.exports = (app) => {
       .catch(err => console.log(err))
     
     Promise.all([addStandup, updateStudentStandup])
-      .then()
       .catch(err => console.log(err));
 
     bot.postEphemeral(channel, user, 'Have a great day!', params);
