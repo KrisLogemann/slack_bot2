@@ -1,5 +1,5 @@
 'use strict';
-require('dotenv').config();
+
 module.exports = function(app) {
   var User = app.models.user;
   var Role = app.models.Role;

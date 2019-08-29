@@ -4,7 +4,7 @@ const loopback = require('loopback');
 const boot = require('loopback-boot');
 const path = require('path');
 const session = require('express-session');
-require('dotenv').config();
+
 const app = module.exports = loopback();
 
 app.set('view engine', 'ejs');
@@ -52,7 +52,6 @@ for (let s in config) {
   c.session = c.session !== false;
   passportConfigurator.configureProvider(s, c);
 }
-var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn;
 
 app.get('/', (req, res) => {
   res.redirect('/login');

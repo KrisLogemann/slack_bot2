@@ -1,10 +1,8 @@
-/* eslint-disable max-len */
 'use strict';
 
 const axios = require('axios');
 const bot = require('../bot');
 
-//let checkedIn = [];
 let students = [];
 let url = process.env.BASE_URL ? process.env.BASE_URL : 'http://localhost:3000/';
 
@@ -166,16 +164,33 @@ module.exports = (app) => {
 
   // 5:50pm
   const earlyCheckOutReminder = schedule.scheduleJob({hour: 17, minute: 50}, () => {
+    // debug
+    console.log('==================' );
+    console.log(' ==== 5:50pm ==== ' );
+    console.log('earlyCheckOutReminder = schedule.scheduleJob({hour: 17, minute: 50},' );
+
     app.models.checkin.active((err, response) => {
       if(err) { 
-        console.log(err); 
+        // debug
+        console.log('... error executing app.models.checkin.active', );
+
+        console.log(err);
       }
       else {
         let checkedInStudents = response;
+        // debug
+        console.log('... # active students:', response === undefined ? 'undefined' : response.length);
+
         bot.getUsers()
           .then( users => {
+            // debug
+            console.log('... # bot students:', users === undefined ? 'undefined' : users.length);
+
             users.members.forEach(user => {
               if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
+                // debug
+                console.log('... ... bot user === studen slack id', user.id,' ... postEphemeral');
+
                 bot.postEphemeral(
                   process.env.STUDENTS_CHANNEL, 
                   user.id, 
@@ -183,6 +198,10 @@ module.exports = (app) => {
                   );
               }
             });
+          })
+          .catch(err=>{
+            console.log('... ... error calling bot.getUsers()');
+            console.log(err);
           });
       }
     });
@@ -190,6 +209,11 @@ module.exports = (app) => {
 
   // 6:15pm
   const lateCheckOutReminder = schedule.scheduleJob({hour: 18, minute: 15}, () => {
+    // debug
+    console.log('==================' );
+    console.log(' ==== 6:15pm ==== ' );
+    console.log('lateCheckOutReminder = schedule.scheduleJob({hour: 18, minute: 15},' );
+
     var message = {
       'attachments': [
         {
@@ -220,17 +244,33 @@ module.exports = (app) => {
 
     app.models.checkin.active((err, response) => {
       if(err) { 
+        // debug
+        console.log('... error executing app.models.checkin.active', );
+
         console.log(err); 
       }
       else {
+        // debug
+        console.log('... # active students:', response === undefined ? 'undefined' : response.length);
+
         let checkedInStudents = response;
         bot.getUsers()
           .then( users => {
+            // debug
+            console.log('... # bot students:', users === undefined ? 'undefined' : users.length);
+
             users.members.forEach(user => {
               if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
+                // debug
+                console.log('... ... bot user === studen slack id', user.id,' ... postEphemeral');
+
                 bot.postEphemeral(process.env.STUDENTS_CHANNEL, user.id, '', message);
               }
             });
+          })
+          .catch(err=>{
+            console.log('... ... error calling bot.getUsers()');
+            console.log(err);
           });
       }
     });
@@ -238,22 +278,48 @@ module.exports = (app) => {
 
   // 6:20pm
   const checkOutCache = schedule.scheduleJob({hour: 18, minute: 20}, () => {
+    // debug
+    console.log('==================' );
+    console.log(' ==== 6:20pm ==== ' );
+    console.log('checkOutCache = schedule.scheduleJob({hour: 18, minute: 20}, ' );
+
     let checkouts = [];
     app.models.checkin.active((err, response) => {
-      if(err) { console.log(new Error().lineNumber, err) }
-      checkouts = response.map(checkin => {
-        return app.models.checkin.updateAll(
-          { id: checkin.id },
-          { checkout_time: new Date(),
-            hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
-            // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
-          }
-        )
-        .then(response => response)
-      });
+      if(err) { 
+        // debug
+        console.log('... error executing app.models.checkin.active', );
+
+        console.log(err);
+      }
+      else {
+        // debug
+        console.log('... # active', response.length);
+
+        checkouts = response.map(checkin => {
+          console.log('... ... adding to future promise all:', checkin.slack_id, checkin.name, checkin.id);
+
+          return app.models.checkin.updateAll(
+            { id: checkin.id },
+            { checkout_time: new Date(),
+              hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
+              // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
+            }
+          )
+          .catch(err=>{
+            console.log('... ... error calling app.models.checkin.updateAll()');
+            console.log(err);
+          })
+        });
+      }
     });
     Promise.all(checkouts)
-      .catch(new Error().lineNumber, err);
+      .catch(err=>{
+        // debug
+        console.log('=====' );
+        console.log('... ... error calling Promise.all to checkout students');
+
+        console.log(err);
+      });
   });
 
   function doorbell(user, channel) {
@@ -278,7 +344,8 @@ module.exports = (app) => {
         },
       ],
     };
-    bot.postMessage(process.env.KEY_CHANNEL, `<@${user}> is at the door.`, params)
+    bot.postMessage(process.env.KEY_CHANNEL,
+      `<@${user}> is at the door.`, params)
       .then((response) => {
         bot.postEphemeral(channel, user, 'Did you get in?', message);
       });
@@ -333,7 +400,11 @@ module.exports = (app) => {
       var params = {
         icon_emoji: ':smiley:',
       };
-      bot.postEphemeral(channel, userSlackId, 'You have already submitted your standup for today.', params);
+      bot.postEphemeral(
+        channel,
+        userSlackId,
+        'You have already submitted your standup for today.',
+        params);
     }
   };
 
@@ -341,7 +412,11 @@ module.exports = (app) => {
     var params = {
       icon_emoji: ':sadpepe:',
     };
-    bot.postEphemeral(channel, user, 'Please submit your standup later today.', params);
+    bot.postEphemeral(
+      channel,
+      user,
+      'Please submit your standup later today.',
+      params);
   };
 
   function submitStandup(user, channel, submission) {
@@ -373,8 +448,8 @@ module.exports = (app) => {
     const updateStudentStandup = app.models.student.updateAll(
       {slack_id: user},
       {'date-of-last-standup': newDate})
-      .catch(err => console.log(err))
-    
+      .catch(err => console.log(err));
+
     Promise.all([addStandup, updateStudentStandup])
       .catch(err => console.log(err));
 
@@ -386,33 +461,36 @@ module.exports = (app) => {
     // check the active checkins to see if the current user is already checked in
     app.models.checkin.active((err, response) => {
       if(err) { 
-        let thisline = new Error().lineNumber;
-        console.log(thisline,err);
+        console.log(err);
       }
       else if( response.filter(e => e.slack_id === slackId).length > 0 ){
         var params = {
           icon_emoji: ':x:',
         };
-        bot.postEphemeral(channel, slackId, 'You have already checked in!', params);
+        bot.postEphemeral(
+          channel,
+          slackId,
+          'You have already checked in!',
+          params);
       }
       else {
         // post message "you have checked in"
         const isNearby = 
-          (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 
+          (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) <
           0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
 
-          app.models.checkin
+        app.models.checkin
           .create({
             slack_id: slackId,
             checkin_time: new Date(),
             checkout_time: null,
-            hours: 0
+            hours: 0,
           })
           .then(response => {
-            app.models.log.checkIn( slackId, loc.lat, loc.long, (err,resp) => {
-              if(err) { 
-                let thisline = new Error().lineNumber;
-                console.log(thisline,err);
+            app.models.log.checkIn(
+              slackId, loc.lat, loc.long, (err,resp) => {
+              if(err) {
+                console.log(err);
                 var params = {
                   icon_emoji: ':x:',
                 };
@@ -422,9 +500,14 @@ module.exports = (app) => {
                 var params = {
                   icon_emoji: ':heavy_check_mark:',
                 };
-                bot.postEphemeral(channel, slackId, 'You have checked in!', params);
+                bot.postEphemeral(
+                  channel,
+                  slackId,
+                  'You have checked in!',
+                  params);
                 if (process.env.EXTERNAL_LOGGING) {
-                  axios.post(process.env.EXTERNAL_LOGGING_URL,{
+                  axios.post(process.env.EXTERNAL_LOGGING_URL,
+                    {
                       slackId,
                       method: 'checkin',
                       loc,
@@ -435,8 +518,15 @@ module.exports = (app) => {
                 };
               }
             });
+
           })
-          .catch(err => { let thisline = new Error().lineNumber; console.log(thisline,err); });
+          .catch(err => {
+            console.log(err);
+            var params = {
+              icon_emoji: ':x:',
+            };
+            bot.postEphemeral(channel, user, 'Error', params);
+          });
       }
     });
   };
@@ -449,32 +539,43 @@ module.exports = (app) => {
       } 
       else {
         let userCheckedIn = response.filter(e => e.slack_id === slackId);
-        if (userCheckedIn.length===0){
+        if (userCheckedIn.length === 0){
           var params = {
             icon_emoji: ':x:',
           };
           bot.postEphemeral(channel, slackId, 'You have not checked in!', params);
         } 
         else {
-          const isNearby = (loc.lat && loc.long) && (Math.abs(loc.lat - process.env.LAT) < 0.0001 && Math.abs(loc.long - process.env.LONG) < 0.0001);
+          const isNearby = (loc.lat && loc.long) &&
+            (Math.abs(loc.lat - process.env.LAT) < 0.0001 &&
+            Math.abs(loc.long - process.env.LONG) < 0.0001);
           if (penalty === 'none' && !isNearby) {
             penalty = 'notAtSchool';
           }
+
           checkouts = userCheckedIn.map(checkin => {
             return app.models.checkin.updateAll(
               { id: checkin.id },
               { checkout_time: new Date(),
-                hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
+                hours: (new Date() - new Date(checkin.checkin_time)) / 
+                (1000 * 60 * 60),
                 // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
               }
             )
-            .then(response => response)
+            .catch(err=>console.log(err));
           });
 
           var params = {
             icon_emoji: ':heavy_check_mark:',
           };
-          bot.postEphemeral(channel, slackId, penalty === 'timeout' ? ':warning: You have been automatically checked out.' : 'You have checked out!', params);
+          bot.postEphemeral(
+            channel,
+            slackId, 
+            penalty === 'timeout' ? 
+            ':warning: You have been automatically checked out.' :
+            'You have checked out!',
+            params);
+
           if (process.env.EXTERNAL_LOGGING) {
             axios.post( process.env.EXTERNAL_LOGGING_URL, {
               slackId,
