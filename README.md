@@ -1,6 +1,6 @@
 # Ding Dong Slack Bot
 
-This Slack bot allows a student to ring the doorbell to alert the staff to open the door and gives them the ability to click a button to let the staff know they got in. A student will also be able to check in and out of class. The check in and out times will be logged for each student. A student will be able to submit a daily stand up report. Staff can view all submitted stand ups for the day in a private channel.
+This Slack bot allows a student to ring the doorbell to alert the staff to open the door and gives them the ability to click a button to let the staff know they got in. A student will also be able to check in and out of class. The check in and out times will be logged for each student. A student will be able to submit a daily stand up report. Staff can view all submitted stand ups for the day in a private channel. Staff can also view summary data for standups and attendance on a dashboard site.
 
 ## Setup
 
@@ -15,14 +15,29 @@ Add environment variables to `.env`. See engineers for credentials. The STUDENTS
 ```
 OAUTH_ACCESS_TOKEN=
 BOT_USER_OAUTH_ACCESS_TOKEN=
+
 STUDENTS_CHANNEL= <current students channel ID>
 KEY_CHANNEL= <key channel ID>
 ADMIN_REPORTS_CHANNEL=< admin reports channel ID>
+
 SLACK_URL= <base url for Slack Workspace>
 BASE_URL= <server host base url>
+
 TEST_USER_ID= <any user ID in knock channel>
+
 LAT= <Latitude for checkin/checkout location>
-LONG= <Longitude for checkin/checout location>
+LONG= <Longitude for checkin/checkout location>
+
+GOOGLE_ID=<Required for Google login (authentication)>
+GOOGLE_SECRET=<Required for Google login (authentication)>
+
+MONGODB_URI=<mongo database url>
+
+ADMIN_USERNAME=<optional: name of the user that is generated on server boot>
+ADMIN_EMAIL=<email for the user that is generated on server boot>
+ADMIN_PASSWORD=<password for the user that is generated on server boot>
+
+NODE_ENV=<development or production>
 
 Optional
 EXTERNAL_LOGGING= <truthy - only runs if value is present>
@@ -106,12 +121,40 @@ Note - Names for App, Bot, Interactivity, and Slash Commands for local dev bots 
 
 6.  Add Environmental Variables to .env
 
+### Setup Google Authentication
+1. Create a developer account on Google.
+
+2. Create your credentials and get your client id and client secret.
+
+3. Google Auth requires the following dependencies: Loopback component passport, passport, passport google auth, and passport oauth2. 
+
+4. Create a providers.js in your root folder and paste this in and add your google id and secret to an env file:
+
+module.exports = {
+  'google-login': {
+    'provider': 'google',
+    'module': 'passport-google-oauth',
+    'strategy': 'OAuth2Strategy',
+    'clientID': process.env.GOOGLE_ID,
+    'clientSecret': process.env.GOOGLE_SECRET,
+    'callbackURL': '/auth/google/callback',
+    'authPath': '/auth/google',
+    'callbackPath': '/auth/google/callback',
+    'successRedirect': '/auth',
+    'failureRedirect': '/login',
+    'scope': ['email', 'profile'],
+    'failureFlash': true,
+  },
+};
+
+5. Once you have your routes setup in server and everything is connected to your button, when you go to login for the first time you're going to get a redirect uri mismatch. Don't freak out. This just means you set it up right and there's just one more step you need to do.
+
+6. Copy the redirect uri that it's telling you is not authorized, go back to your Google developers control panel, click on the app that you created, scroll down to authorized redirect uris, and paste the uri you copied from before. Click save. Sometimes it doesn't save the first time and needs to be pasted in again.
+
+7. Once youve done that you should have a fully functioning Google Authorization button for your app. Everytime the uri changes you will have to add that new uri to the authorized uri list.
+
 ## Start Server
 ### Production Server
-```
-npm run build
-```
-
 ```
 npm run start
 ```
@@ -130,6 +173,10 @@ lt --port 3000 --subdomain <devsubdomain>
 ```
 npm run start
 ```
+&emsp;&emsp;or to have parcel watch your files for changes
+```
+npm run dev
+```
 
 ## Usage
  DingDongbot lives in *Slack* 
@@ -139,33 +186,44 @@ npm run start
  >in the *message input* in any sdcs slack channel.
  
 **Type in** 
-> - **/doorbell** to ring the bell (This sends a message to the *key* channel - alerting the staff to open front door). 
-> - a *"Got in"* button will be displayed in a private channel to the user, this is pressed to notify the staff that the user is or is not in the building. 
+> **/doorbell** 
+- To ring the bell (This sends a message to the *key* channel - alerting the staff to open front door). 
+- A *"Got in"* button will be displayed in a private channel to the user, this is pressed to notify the staff that the user is or is not in the building. 
 
-> - Type in **/checkin** to check in.
-(a link to the geolocation landing page to verify location and checkin ability will be displayed.) Click the link to go to the Geolocation website.  Click the find me button, wait for the coordinates to appear, and then click submit to check in.
-(This creates a timestamp on the server, the user will also be sent a reminder by 9:00am to checkin, if they haven't before hand) :clock9:
+> **/checkin**
+- To check in.
+- A link to the geolocation landing page to verify location and checkin ability will be displayed. Click the link to go to the Geolocation website.  Click the find me button, wait for the coordinates to appear, and then click submit to check in.
+- This creates a timestamp on the server, the user will also be sent a reminder by 9:00am to checkin, if they haven't before hand.
 
-> - Type in **/checkout** to check out. 
-(This creates a timestamp on the server, the user will also be sent a reminder by 5:50PM to checkout before they leave.)
-Click the link to go to the Geolocation website.  Click the find me button, wait for the coordinates to appear, and then click submit to check out.
+> **/checkout**
+- To check out. 
+- This creates a timestamp on the server, the user will also be sent a reminder by 5:50PM to checkout before they leave.
+- Click the link to go to the Geolocation website.  Click the find me button, wait for the coordinates to appear, and then click submit to check out.
+- If they haven't fully checked out by 6:15pm another reminder will be sent (Are you still here?) with two buttons (Yes/No).
+    - If **yes** is selected (they will be sent a link to the geolocation landing page to verify location and checkout will be displayed.)
+    - If **no** it will automatically check them out and add a location penalty to their log.
+- If the user is still not checked out by 6:20pm,  a message will be displayed informing them that they are automatically checked out. Also a penalty will added to their log.
 
--if they havent fully checked out by 6:15pm another reminder will be sent (Are you still here?) with two buttons (Yes/No).
-
--If **yes** is selected (they will be sent a link to the geolocation landing page to verify location and checkout will be displayed.)
-
--If **no** it will automatically check them out and add a location penalty to their log.
-
--If the user is still not checked out by 6:20pm,  a message will be displayed informing them that they are automatically checked out. Also a penalty will added to their log. :clock630:
-
-> - Type in **/standup** to trigger the standup dialog.
-(a survey form will appear with three stand up questions for the students to submit to the staff. Students can cancel the form and be prompted to remember to submit later on in the day.)
-
+> **/standup**
+- To trigger the standup dialog.
+- A survey form will appear with three stand up questions for the students to submit to the staff. Students can cancel the form and be prompted to remember to submit later on in the day.
 - All submitted stand ups will be cleared from cache at 11:59pm.
 
 ## Back End
 
-Loopback used for server setup. Please view server/boot folder for models/relationships.
+Loopback used for server setup. Please view common/models folder for models/relationships.
+
+### Authorizing Google Authenticated Users
+1.  Create a new user associated with your Google account:
+    - With the site running, click the button to log in using your account on Google and follow the instructions to enter your email and password. You will be redirected back to the login page because Google has authenticated you, and LoopBack has created a user for you, but you are not yet authorized to view the pages.
+
+2.  Grant the new user admin privilege using either `/explorer` or your MongoDB instance:
+    - If in explorer, log in with the admin credentials you created on server boot and set the access token with the response id.
+    - Create a new RoleMapping:
+        - principalType: "USER"
+        - principalId: \< the id of the user created in step 1 >
+        - roleId: \< the id of the admin role created on server boot >
+3.  You should now be able to log in to the site with your Google credentials
 
 :copyright: 2019 NOWW/SDCS
 

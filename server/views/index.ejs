@@ -1,158 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta
+    <meta charset="UTF-8">
+    <meta 
       name="viewport"
-      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-    />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+      content="width=device-width, initial-scale=1.0 shrink-to-fit=no"
+    >
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
       integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
       crossorigin="anonymous"
     />
-    <script
-      src="https://code.jquery.com/jquery-3.4.1.min.js"
-      integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
-      crossorigin="anonymous"
-    ></script>
-    <title>DingDongBot</title>
     <style>
       body {
         background: #e9ecef;
       }
-      .footer {
+      header {
+        background-color:  #3F0E40;
+      }
+      footer {
+        background-color:  #3F0E40;
         position: absolute;
         bottom: 0;
         width: 100%;
         height: 60px;
         line-height: 60px;
       }
+      @keyframes spinner {
+          0% {
+              transform: translate3d(-50%, -50%, 0) rotate(0deg);
+          }
+          100% {
+              transform: translate3d(-50%, -50%, 0) rotate(360deg);
+          }
+      }
+      .spinner {
+        height: 45px;  
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transition: opacity linear 0.1s;
+        display: none;
+      }  
+      .spinner::before {
+        animation: 2s linear infinite spinner;
+        border: solid 3px #ddd;
+        border-bottom-color: #3F0E40;
+        border-radius: 50%;
+        content: "";
+        height: 40px;
+        left: 50%;
+        opacity: inherit;
+        position: absolute;
+        top: 50%;
+        transform: translate3d(-50%, -50%, 0);
+        transform-origin: center;
+        width: 40px;
+        will-change: transform;
+      }
+      #submitBtn {
+        display: none;
+      }
     </style>
+    <title>DingDongBot</title>
+  </head>
+  <body>
+    <header class="navbar navbar-light">
+      <span class="navbar-brand text-white font-weight-bold">DingDongBot</span>
+    </header>
+      <div class="spinner"></div>
+      <div class="jumbotron jumbotron-fluid pt-2">
+        <div class="container">
+          <h1 class="display-4 text-center font-weight-bold">
+            Confirm my Location
+          </h1>
+          <button
+            class="btn btn-success btn-lg btn-block btn font-weight-bold locationButton"
+            onclick="getLocation()"
+            data-toggle="tooltip"
+            data-placement="top"
+            title="Find me"
+            id="findMe"
+          >
+            Find me
+          </button>
+          <div class="text-left" id="location">
+            <br />
+            <div class="mb-3">
+              <span class="font-weight-bold">Latitude: </span>
+              <span id="latitude"></span>
+            </div>
+            <div class="mb-4">
+              <span class="font-weight-bold">Longitude: </span>
+              <span id="longitude"></span>
+            </div>
+          </div>
+          <div class="container">
+            <form action="/submitGeo" method="post">
+              <input type="hidden" name="lat" id="lat" />
+              <input type="hidden" name="long" id="long" />
+              <input type="hidden" name="token" value="0" />
+              <input type="hidden" name="user_id" value="<%= user %>" />
+              <input type="hidden" name="channel_id" value="<%= channel %>" />
+              <input type="hidden" name="checkin" value="<%= checkin %>" />
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg btn-block font-weight-bold "
+                value="Submit"
+                data-toggle="tooltip"
+                data-placement="top"
+                title="Submit"
+                id="submitBtn"
+              >
+                Submit
+              </button>
+            </form>
+        </div>
+      </div>
+      <footer>
+        <div class="container">
+          <div class="text-center">
+            <span class="text-muted ">&copy; SDCS/NOWW 2019</span>
+          </div>
+        </div>
+      </footer>
+
     <script>
+      const submitButton = document.getElementById("submitBtn")
+      const findMeButton = document.getElementById("findMe");
+      const spinner = document.querySelector(".spinner");
+      submitButton.disabled = true;
+
       function getLocation() {
         // check whether users browser supports Geolocation API or not.
-        if (navigator.geolocation) {
-          // Supported
-          var positionOptions = {
-            timeout: Infinity,
+        if(navigator.geolocation) {
+          spinner.style.display = "block";
+          findMeButton.innerHTML = "Loading Coordinates";
+          findMeButton.disabled = true;
+
+          const geoLocationOptions = {
             maximumAge: 0,
+            timeout: 7000,
             enableHighAccuracy: true
           };
+
           navigator.geolocation.getCurrentPosition(
-            getPosition,
-            catchError,
-            positionOptions
-            //using the code change below, is a place holder for expansion to allow ther users location
-            //to be found and placed on a map using "the googlemap.api"
-            // watchID = navigator.geolocation.watchPosition(getPosition, catchError, positionOptions);
-          );
+            geoLocationSuccessCallback,
+            geoLocationErrorCallback,
+            geoLocationOptions,
+          )
         } else {
-          // Not Supported
           alert("Oops this browser does not support HTML geolocation.");
         }
       }
-      function getPosition(position) {
-        document.getElementById("latLocation").innerHTML =
-          position.coords.latitude;
-        document.getElementById("longLocation").innerHTML =
-          position.coords.longitude;
-        document.getElementById("lat").value = position.coords.latitude;
-        document.getElementById("long").value = position.coords.longitude;
+
+      function geoLocationSuccessCallback(response) {
+        document.getElementById("latitude").innerHTML =
+          response.coords.latitude;
+        document.getElementById("longitude").innerHTML =
+          response.coords.longitude;
+        document.getElementById("lat").value = response.coords.latitude;
+        document.getElementById("long").value = response.coords.longitude;
+        
+        spinner.style.display = "none";
+        findMeButton.innerHTML = "Found you. Please Submit";
+        submitButton.disabled = false;
+        submitButton.style.display = "block";
       }
-      function catchError(positionError) {
-        switch (positionError.code) {
-          case positionError.TIMEOUT:
+
+      function geoLocationErrorCallback(err) {
+        switch (err.code) {
+          case err.TIMEOUT:
             alert(
               "The request to get user location has aborted, as it has taken too long."
             );
             break;
-          case positionError.POSITION_UNAVAILABLE:
+          case err.POSITION_UNAVAILABLE:
             alert("Location information is not available");
             break;
-          case positionError.PERMISSION_DENIED:
+          case err.PERMISSION_DENIED:
             alert("Permission to share location information has been denied!");
             break;
           default:
             alert("An unknown error has occured !");
         }
+        findMeButton.innerHTML = "Find me";
+        findMeButton.disabled = false;
+        spinner.style.display = "none";
       }
-      $(function() {
-        var locationButton = document.querySelector(".locationButton");
-        locationButton.addEventListener(
-          "click",
-          function() {
-            locationButton.innerHTML = "Loading Coordinates.";
-            setTimeout(function() {
-              locationButton.innerHTML = "Found you. Please Submit";
-            }, 2000);
-          },
-          false
-        );
-      });
     </script>
-  </head>
-  <body>
-    <nav class="navbar navbar-light" style="background-color: #3F0E40;">
-      <span class="navbar-brand text-white font-weight-bold">DingDongBot</span>
-    </nav>
-    <div class="jumbotron jumbotron-fluid" style="padding-top: 0.5rem">
-      <div class="container">
-        <h1 class="display-4 text-center font-weight-bold">
-          Confirm my Location
-        </h1>
-        <button
-          class="btn btn-success btn-lg btn-block btn font-weight-bold locationButton"
-          onclick="getLocation()"
-          data-toggle="tooltip"
-          data-placement="top"
-          title="Where you at Dawg?"
-          id="locationBtn"
-        >
-          Find me
-        </button>
-        <div class="text-left" id="location">
-          <br />
-          <p>
-            <span class="font-weight-bold">Latitude: </span>
-            <span id="latLocation"></span>
-          </p>
-          <p>
-            <span class="font-weight-bold">Longitude: </span>
-            <span id="longLocation"></span>
-          </p>
-        </div>
-        <div class="container">
-          <form action="/submitGeo" method="post">
-            <input type="hidden" name="lat" id="lat" />
-            <input type="hidden" name="long" id="long" />
-            <input type="hidden" name="token" value="0" />
-            <input type="hidden" name="user_id" value="<%= user %>" />
-            <input type="hidden" name="channel_id" value="<%= channel %>" />
-            <input type="hidden" name="checkin" value="<%= checkin %>" />
-            <button
-              type="submit"
-              class="btn btn-primary btn-lg btn-block font-weight-bold "
-              value="Submit"
-              data-toggle="tooltip"
-              data-placement="top"
-              title="Submit fool!"
-              id="submitBtn"
-            >
-              Submit
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-    <footer class="footer" style="background: #3F0E40;">
-      <div class="container r">
-        <div class="text-center">
-          <span class="text-muted ">&copy; SDCS/NOWW 2019</span>
-        </div>
-      </div>
-    </footer>
   </body>
 </html>

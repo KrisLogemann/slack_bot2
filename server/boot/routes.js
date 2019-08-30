@@ -1,5 +1,5 @@
 'use strict';
-
+const path = require('path');
 const axios = require('axios');
 const bot = require('../bot');
 
@@ -164,33 +164,16 @@ module.exports = (app) => {
 
   // 5:50pm
   const earlyCheckOutReminder = schedule.scheduleJob({hour: 17, minute: 50}, () => {
-    // debug
-    console.log('==================' );
-    console.log(' ==== 5:50pm ==== ' );
-    console.log('earlyCheckOutReminder = schedule.scheduleJob({hour: 17, minute: 50},' );
-
     app.models.checkin.active((err, response) => {
       if(err) { 
-        // debug
-        console.log('... error executing app.models.checkin.active', );
-
         console.log(err);
       }
       else {
         let checkedInStudents = response;
-        // debug
-        console.log('... # active students:', response === undefined ? 'undefined' : response.length);
-
         bot.getUsers()
           .then( users => {
-            // debug
-            console.log('... # bot students:', users === undefined ? 'undefined' : users.length);
-
             users.members.forEach(user => {
               if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
-                // debug
-                console.log('... ... bot user === studen slack id', user.id,' ... postEphemeral');
-
                 bot.postEphemeral(
                   process.env.STUDENTS_CHANNEL, 
                   user.id, 
@@ -200,7 +183,7 @@ module.exports = (app) => {
             });
           })
           .catch(err=>{
-            console.log('... ... error calling bot.getUsers()');
+            console.log('error in earlyCheckOutReminder');
             console.log(err);
           });
       }
@@ -209,11 +192,6 @@ module.exports = (app) => {
 
   // 6:15pm
   const lateCheckOutReminder = schedule.scheduleJob({hour: 18, minute: 15}, () => {
-    // debug
-    console.log('==================' );
-    console.log(' ==== 6:15pm ==== ' );
-    console.log('lateCheckOutReminder = schedule.scheduleJob({hour: 18, minute: 15},' );
-
     var message = {
       'attachments': [
         {
@@ -244,32 +222,20 @@ module.exports = (app) => {
 
     app.models.checkin.active((err, response) => {
       if(err) { 
-        // debug
-        console.log('... error executing app.models.checkin.active', );
-
         console.log(err); 
       }
       else {
-        // debug
-        console.log('... # active students:', response === undefined ? 'undefined' : response.length);
-
         let checkedInStudents = response;
         bot.getUsers()
           .then( users => {
-            // debug
-            console.log('... # bot students:', users === undefined ? 'undefined' : users.length);
-
             users.members.forEach(user => {
               if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
-                // debug
-                console.log('... ... bot user === studen slack id', user.id,' ... postEphemeral');
-
                 bot.postEphemeral(process.env.STUDENTS_CHANNEL, user.id, '', message);
               }
             });
           })
           .catch(err=>{
-            console.log('... ... error calling bot.getUsers()');
+            console.log('error in lateCheckOutReminder');
             console.log(err);
           });
       }
@@ -278,26 +244,14 @@ module.exports = (app) => {
 
   // 6:20pm
   const checkOutCache = schedule.scheduleJob({hour: 18, minute: 20}, () => {
-    // debug
-    console.log('==================' );
-    console.log(' ==== 6:20pm ==== ' );
-    console.log('checkOutCache = schedule.scheduleJob({hour: 18, minute: 20}, ' );
-
     let checkouts = [];
     app.models.checkin.active((err, response) => {
       if(err) { 
-        // debug
-        console.log('... error executing app.models.checkin.active', );
-
+        console.log('in checkOutCache, an error calling app.models.checkin.active');
         console.log(err);
       }
       else {
-        // debug
-        console.log('... # active', response.length);
-
         checkouts = response.map(checkin => {
-          console.log('... ... adding to future promise all:', checkin.slack_id, checkin.name, checkin.id);
-
           return app.models.checkin.updateAll(
             { id: checkin.id },
             { checkout_time: new Date(),
@@ -306,7 +260,7 @@ module.exports = (app) => {
             }
           )
           .catch(err=>{
-            console.log('... ... error calling app.models.checkin.updateAll()');
+            console.log('in checkOutCache, an error calling app.models.checkin.updateAll()');
             console.log(err);
           })
         });
@@ -314,17 +268,14 @@ module.exports = (app) => {
     });
     Promise.all(checkouts)
       .catch(err=>{
-        // debug
-        console.log('=====' );
-        console.log('... ... error calling Promise.all to checkout students');
-
+        console.log('in checkOutCache, an error calling Promise.all to checkout students');
         console.log(err);
       });
   });
 
   function doorbell(user, channel) {
     var params = {
-      icon_url: 'icon.png',
+      icon_url: path.join(__dirname, '../icon.png'),
     };
     var message = {
       'attachments': [
@@ -610,7 +561,6 @@ module.exports = (app) => {
   };
 
   // resets student standups @11:59pm.
-
   const standupReset = schedule.scheduleJob({hour: 23, minute: 59}, () => {
     students.map(reports => {
       reports.reported = false;
@@ -647,145 +597,4 @@ module.exports = (app) => {
       }
     });
   });
-
-  // djl, debug
-  // 5:50pm
-  if( process.env.DEBUG_EARLY_WARNING >= 1 && process.env.DEBUG_EARLY_WARNING <= 30 ) {
-    console.log();
-    console.log('Debug process.env.DEBUG_EARLY_WARNING set to every', process.env.DEBUG_EARLY_WARNING, 'minute(s).');
-    console.log();
-    const debugEarlyCheckOutReminder = schedule.scheduleJob(`*/${process.env.DEBUG_EARLY_WARNING} * * * *`, () => {
-
-      console.log();
-      console.log('Debug process.env.DEBUG_EARLY_WARNING doing the every', process.env.DEBUG_EARLY_WARNING, 'minute(s).');
-      console.log();  
-
-      app.models.checkin.active((err, response) => {
-        if(err) { 
-          console.log(err); 
-        }
-        else {
-          let checkedInStudents = response;
-          //djl
-          console.log('checkedInStudents:');
-          console.log(checkedInStudents);
-          if(checkedInStudents.length){
-            console.log('checkedInStudents.length:',checkedInStudents.length)
-            bot.getUsers()
-              .then( users => {
-                users.members.forEach(user => {
-                  if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
-                    console.log('debug early warning to:', user.id, user.real_name)
-                    bot.postEphemeral(
-                      process.env.STUDENTS_CHANNEL, 
-                      user.id,
-                      ':alarm_clock: Don\'t forget to check out before you leave'
-                    );
-                  }
-                });
-              });
-          }
-        }
-      });
-    });
-  }
-
-  // djl, debug
-  // 6:15pm
-  if( process.env.DEBUG_LATE_REMINDER >= 1 && process.env.DEBUG_LATE_REMINDER <= 30 ) {
-    console.log();
-    console.log('Debug process.env.DEBUG_LATE_REMINDER set to every', process.env.DEBUG_LATE_REMINDER, 'minute(s).');
-    console.log();
-    const DebugLateCheckOutReminder = schedule.scheduleJob(`*/${process.env.DEBUG_LATE_REMINDER} * * * *`, () => {
-
-      console.log();
-      console.log('Debug process.env.DEBUG_LATE_REMINDER doing the  every', process.env.DEBUG_LATE_REMINDER, 'minute(s).');
-      console.log();
-
-      var message = {
-        'attachments': [
-          {
-            'title': 'Time to check out!',
-            'text': 'Are you still here?',
-            'callback_id': 'latecheckout',
-            'color': '#3AA3E3',
-            'attachment_type': 'default',
-            'actions': [
-              {
-                'name': 'yes',
-                'text': 'Yes, please check me out',
-                'style': 'primary',
-                'type': 'button',
-                'value': 'yes',
-              },
-              {
-                'name': 'no',
-                'text': 'No',
-                'style': 'danger',
-                'type': 'button',
-                'value': 'no',
-              },
-            ],
-          },
-        ],
-      };
-
-      app.models.checkin.active((err, response) => {
-        if(err) { 
-          console.log(err); 
-        }
-        else {
-          let checkedInStudents = response;
-          //djl
-          console.log('checkedInStudents:');
-          console.log(checkedInStudents);
-          if(checkedInStudents.length){
-            console.log('checkedInStudents.length:',checkedInStudents.length)
-            bot.getUsers()
-              .then( users => {
-                users.members.forEach(user => {
-                  if( checkedInStudents.filter(e=>e.slack_id===user.id).length > 0 ) {
-                    console.log('debug later reminder to:', user.id, user.real_name);
-                    bot.postEphemeral(process.env.STUDENTS_CHANNEL, user.id, '', message);
-                  }
-                });
-              });
-          }
-        }
-      });
-    });
-  }
-
-  // djl, debug
-  // every X minute checkout test
-  if( process.env.DEBUG_AUTO_CHECKOUT >= 1 && process.env.DEBUG_AUTO_CHECKOUT <= 30 ) {
-    console.log();
-    console.log('Debug process.env.DEBUG_AUTO_CHECKOUT set to every', process.env.DEBUG_AUTO_CHECKOUT, 'minute(s).');
-    console.log();
-    const autoCheckout = schedule.scheduleJob(`*/${process.env.DEBUG_AUTO_CHECKOUT} * * * *`, () => {
-
-      console.log();
-      console.log('Debug process.env.DEBUG_AUTO_CHECKOUT doing the every', process.env.DEBUG_AUTO_CHECKOUT, 'minute(s).');
-      console.log();
-
-      let checkouts = [];
-      app.models.checkin.active((err, response) => {
-        if(err) { console.log(new Error().lineNumber, err) }
-        checkouts = response.map(checkin => {
-          console.log('debug auto checkout:', checkin.slack_id);
-
-          return app.models.checkin.updateAll(
-            { id: checkin.id },
-            { checkout_time: new Date(),
-              hours: (new Date() - new Date(checkin.checkin_time)) / (1000*60*60)
-              // (milliseconds in a sec) * (seconds in a min) * (minutes in an hour)
-            }
-          )
-          .then(response => response)
-        });
-      });
-      Promise.all(checkouts)
-        .catch(err=> console.log(new Error().lineNumber, err));
-    });
-  }
 }
